@@ -49,6 +49,7 @@ deepfake_detection_app/
 ├── model_loader.py
 ├── video_processor.py
 └── requirements.txt
+```
 🧠 Model Performance
 Hybrid Spatial–Frequency DANN (~8.8M parameters)
 
