@@ -65,6 +65,10 @@ Robust to JPEG compression and noise
 
 For borderline cases, human inspection is advised
 
+## 📦 Download pre-trained models
+
+- [Download the templates here](https://drive.google.com/drive/folders/1GreU_w4CsETa45GV9TK7jOW_VHEkU_Og?usp=drive_link)
+
 🤝 Contributing
 Academic demonstration – issues and pull requests welcome.
 
