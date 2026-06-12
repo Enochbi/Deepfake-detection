@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Détection de Deepfakes - IA Hybride</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 40px;
+        max-width: 900px;
+        width: 100%;
+        animation: fadeIn 0.5s ease;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 2.5em;
+      }
+
+      .subtitle {
+        text-align: center;
+        color: #666;
+        margin-bottom: 30px;
+        font-size: 1.1em;
+      }
+
+      .badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.75em;
+        font-weight: 600;
+        margin-left: 8px;
+      }
+
+      .upload-zone {
+        border: 3px dashed #667eea;
+        border-radius: 15px;
+        padding: 50px;
+        text-align: center;
+        background: #f8f9fa;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-bottom: 20px;
+      }
+
+      .upload-zone:hover {
+        background: #e9ecef;
+        border-color: #764ba2;
+      }
+
+      .upload-icon {
+        font-size: 4em;
+        margin-bottom: 20px;
+        color: #667eea;
+      }
+
+      #fileInput {
+        display: none;
+      }
+
+      .file-info {
+        display: none;
+        background: #e7f3ff;
+        border: 2px solid #667eea;
+        padding: 15px;
+        border-radius: 10px;
+        margin: 15px 0;
+      }
+
+      .file-info.active {
+        display: block;
+      }
+
+      .controls {
+        margin: 20px 0;
+        display: none;
+      }
+
+      .control-group {
+        margin-bottom: 15px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 5px;
+        color: #333;
+        font-weight: 500;
+      }
+
+      input[type="number"] {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 1em;
+      }
+
+      .button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        font-size: 1.1em;
+        border-radius: 10px;
+        cursor: pointer;
+        width: 100%;
+        transition: transform 0.2s;
+        font-weight: 600;
+      }
+
+      .button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+      }
+
+      .button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .loading {
+        display: none;
+        text-align: center;
+        margin: 20px 0;
+      }
+
+      .loading.active {
+        display: block;
+      }
+
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin: 20px auto;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .results {
+        display: none;
+        margin-top: 30px;
+        animation: slideIn 0.5s ease;
+      }
+
+      .results.active {
+        display: block;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .prediction-box {
+        padding: 30px;
+        border-radius: 15px;
+        margin: 20px 0;
+        text-align: center;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+      }
+
+      .prediction-box.real {
+        background: linear-gradient(135deg, #28a745, #20c997);
+      }
+
+      .prediction-box.fake {
+        background: linear-gradient(135deg, #dc3545, #fd7e14);
+      }
+
+      .prediction-box h2 {
+        font-size: 3em;
+        margin: 0;
+        color: white;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      .prediction-box .confidence {
+        font-size: 1.2em;
+        color: white;
+        margin-top: 10px;
+        opacity: 0.9;
+      }
+
+      .score-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin: 25px 0;
+      }
+
+      .score-card {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+      }
+
+      .score-label {
+        color: #666;
+        font-size: 0.9em;
+        margin-bottom: 8px;
+      }
+
+      .score-value {
+        font-size: 2em;
+        font-weight: bold;
+        color: #333;
+      }
+
+      .score-value.primary {
+        color: #667eea;
+      }
+
+      .info-box {
+        background: #f8f9fa;
+        border-left: 4px solid #667eea;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+      }
+
+      .info-box h4 {
+        margin-bottom: 10px;
+        color: #333;
+      }
+
+      .info-box p {
+        margin: 8px 0;
+        color: #555;
+        line-height: 1.6;
+      }
+
+      .chart-container {
+        background: white;
+        padding: 25px;
+        border-radius: 15px;
+        margin: 25px 0;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+      }
+
+      .error {
+        background: #ffe6e6;
+        border: 2px solid #dc3545;
+        color: #721c24;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 20px 0;
+        display: none;
+      }
+
+      .error.active {
+        display: block;
+      }
+
+      .reset-button {
+        background: #6c757d;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>
+        🎭 Détection de Deepfakes
+        <span class="badge">IA à 2 Niveaux</span>
+      </h1>
+      <p class="subtitle">
+        Système hybride spatial-fréquentiel avec analyse temporelle
+      </p>
+
+      <!-- Upload Zone -->
+      <div class="upload-zone" id="uploadZone">
+        <div class="upload-icon">🎬</div>
+        <div style="font-size: 1.2em; margin-bottom: 10px">
+          Glissez votre vidéo ici ou cliquez pour sélectionner
+        </div>
+        <div style="color: #666; font-size: 0.9em">
+          Formats: MP4, AVI, MOV, MKV (max 100 MB)
+        </div>
+        <input type="file" id="fileInput" accept="video/*" />
+      </div>
+
+      <!-- File Info -->
+      <div class="file-info" id="fileInfo">
+        <div id="fileName"></div>
+      </div>
+
+      <!-- Error -->
+      <div class="error" id="errorMessage"></div>
+
+      <!-- Controls -->
+      <div class="controls" id="controls">
+        <div class="control-group">
+          <label>Nombre de frames à analyser (5-30):</label>
+          <input type="number" id="maxFrames" min="5" max="30" value="10" />
+        </div>
+        <button class="button" id="analyzeButton">🔍 Analyser la vidéo</button>
+      </div>
+
+      <!-- Loading -->
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div id="loadingText">Traitement en cours...</div>
+      </div>
+
+      <!-- Results -->
+      <div class="results" id="results">
+        <!-- Prediction -->
+        <div class="prediction-box" id="predictionBox"></div>
+
+        <!-- Scores Grid -->
+        <div class="score-grid">
+          <div class="score-card">
+            <div class="score-label">Probabilité REAL</div>
+            <div class="score-value primary" id="probReal">-</div>
+          </div>
+          <div class="score-card">
+            <div class="score-label">Probabilité FAKE</div>
+            <div class="score-value" id="probFake">-</div>
+          </div>
+          <div class="score-card">
+            <div class="score-label">Confiance</div>
+            <div class="score-value primary" id="confidence">-</div>
+          </div>
+          <div class="score-card">
+            <div class="score-label">Frames analysées</div>
+            <div class="score-value" id="numFrames">-</div>
+          </div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="info-box">
+          <h4>📊 Comment interpréter ces résultats</h4>
+          <p>
+            <strong>Convention:</strong> 0 = REAL (authentique), 1 = FAKE
+            (deepfake)
+          </p>
+          <p>
+            <strong>Seuil de décision:</strong>
+            <span id="thresholdValue">0.3900</span>
+          </p>
+          <p>
+            • Si P(FAKE) ≥ seuil → Vidéo classée comme <strong>DEEPFAKE</strong>
+          </p>
+          <p>
+            • Si P(FAKE) < seuil → Vidéo classée comme <strong>REAL</strong>
+          </p>
+          <p>
+            <strong>Variance:</strong> <span id="variance">-</span> (cohérence
+            entre frames)
+          </p>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-container">
+          <h3>📈 Analyse temporelle des frames</h3>
+          <canvas id="scoresChart"></canvas>
+        </div>
+
+        <!-- Galerie de visages - MASQUÉE pour performance -->
+        <!-- La section galerie est désactivée pour optimiser les performances -->
+
+        <button class="button reset-button" id="resetButton">
+          🔄 Analyser une autre vidéo
+        </button>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js  "></script>
+    <script>
+      let uploadedFilename = null;
+      let scoresChart = null;
+
+      const uploadZone = document.getElementById("uploadZone");
+      const fileInput = document.getElementById("fileInput");
+      const fileInfo = document.getElementById("fileInfo");
+      const fileName = document.getElementById("fileName");
+      const controls = document.getElementById("controls");
+      const analyzeButton = document.getElementById("analyzeButton");
+      const loading = document.getElementById("loading");
+      const loadingText = document.getElementById("loadingText");
+      const results = document.getElementById("results");
+      const errorMessage = document.getElementById("errorMessage");
+      const resetButton = document.getElementById("resetButton");
+
+      // Upload handling
+      uploadZone.addEventListener("click", () => fileInput.click());
+      uploadZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadZone.style.borderColor = "#764ba2";
+      });
+      uploadZone.addEventListener("dragleave", () => {
+        uploadZone.style.borderColor = "#667eea";
+      });
+      uploadZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (file) handleFileSelection(file);
+      });
+
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) handleFileSelection(file);
+      });
+
+      function handleFileSelection(file) {
+        const validTypes = [
+          "video/mp4",
+          "video/avi",
+          "video/x-msvideo",
+          "video/quicktime",
+          "video/x-matroska",
+        ];
+        if (
+          !validTypes.includes(file.type) &&
+          !file.name.match(/\.(mp4|avi|mov|mkv)$/i)
+        ) {
+          showError("Format non supporté. Utilisez MP4, AVI, MOV ou MKV.");
+          return;
+        }
+
+        const maxSize = 100 * 1024 * 1024;
+        if (file.size > maxSize) {
+          showError("Fichier trop volumineux (max 100 MB).");
+          return;
+        }
+
+        fileName.textContent = `📁 ${file.name} (${formatFileSize(file.size)})`;
+        fileInfo.classList.add("active");
+        uploadFile(file);
+      }
+
+      async function uploadFile(file) {
+        const formData = new FormData();
+        formData.append("video", file);
+
+        loading.classList.add("active");
+        loadingText.textContent = "Upload en cours...";
+        uploadZone.style.display = "none";
+
+        try {
+          const response = await fetch("/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            uploadedFilename = data.filename;
+            loading.classList.remove("active");
+            controls.style.display = "block";
+          } else {
+            throw new Error(data.error || "Erreur lors de l'upload");
+          }
+        } catch (error) {
+          showError(error.message);
+          loading.classList.remove("active");
+          resetInterface();
+        }
+      }
+
+      analyzeButton.addEventListener("click", async () => {
+        if (!uploadedFilename) {
+          showError("Aucune vidéo uploadée");
+          return;
+        }
+
+        controls.style.display = "none";
+        loading.classList.add("active");
+        loadingText.textContent = "Analyse à 2 niveaux en cours...";
+        errorMessage.classList.remove("active");
+
+        try {
+          const response = await fetch("/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              filename: uploadedFilename,
+              max_frames: parseInt(document.getElementById("maxFrames").value),
+            }),
+          });
+
+          const data = await response.json();
+
+          if (!data.success) {
+            showError(data.error || "Erreur inconnue");
+            loading.classList.remove("active");
+            controls.style.display = "block";
+            return;
+          }
+
+          displayResults(data);
+          loading.classList.remove("active");
+        } catch (error) {
+          showError(error.message);
+          loading.classList.remove("active");
+          controls.style.display = "block";
+        }
+      });
+
+      function displayResults(data) {
+        results.classList.add("active");
+
+        // Prediction box
+        const predBox = document.getElementById("predictionBox");
+        predBox.className =
+          "prediction-box " +
+          (data.video_prediction === "REAL" ? "real" : "fake");
+        predBox.innerHTML = `
+        <h2>${
+          data.video_prediction === "REAL" ? "✅ AUTHENTIQUE" : "⚠️ DEEPFAKE"
+        }</h2>
+        <div class="confidence">Confiance: ${data.confidence_percent}%</div>
+      `;
+
+        // Scores
+        document.getElementById("probReal").textContent =
+          data.prob_real_percent + "%";
+        document.getElementById("probFake").textContent =
+          data.prob_fake_percent + "%";
+        document.getElementById("confidence").textContent =
+          data.confidence_percent + "%";
+        document.getElementById("numFrames").textContent = data.num_frames;
+        document.getElementById("thresholdValue").textContent = data.threshold;
+        document.getElementById("variance").textContent =
+          data.score_variance.toFixed(4);
+
+        // Chart - Focus principal sur l'analyse temporelle
+        if (data.frame_probs_fake && data.frame_probs_fake.length > 0) {
+          drawChart(data.frame_probs_fake, data.threshold);
+        }
+      }
+
+      function drawChart(probs, threshold) {
+        const ctx = document.getElementById("scoresChart");
+        if (scoresChart) scoresChart.destroy();
+
+        const meanProb = probs.reduce((a, b) => a + b, 0) / probs.length;
+
+        scoresChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: probs.map((_, i) => i + 1),
+            datasets: [
+              {
+                label: "P(FAKE) par frame",
+                data: probs,
+                borderColor: "#dc3545",
+                backgroundColor: "rgba(220,53,69,0.15)",
+                tension: 0.35,
+                fill: true,
+                pointRadius: 4,
+              },
+              {
+                label: `Seuil décision (${threshold.toFixed(2)})`,
+                data: probs.map(() => threshold),
+                borderColor: "#000",
+                borderDash: [6, 6],
+                borderWidth: 2,
+                pointRadius: 0,
+              },
+              {
+                label: `Moyenne vidéo (${meanProb.toFixed(2)})`,
+                data: probs.map(() => meanProb),
+                borderColor: "#1c7ed6",
+                borderDash: [2, 4],
+                borderWidth: 2,
+                pointRadius: 0,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { position: "top" },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) =>
+                    `${ctx.dataset.label} : ${(ctx.raw * 100).toFixed(1)}%`,
+                },
+              },
+            },
+            scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: "Index temporel des frames",
+                },
+              },
+              y: {
+                min: 0,
+                max: 1,
+                title: {
+                  display: true,
+                  text: "Probabilité FAKE",
+                },
+                ticks: {
+                  callback: (v) => (v * 100).toFixed(0) + "%",
+                },
+              },
+            },
+          },
+        });
+      }
+
+      resetButton.addEventListener("click", resetInterface);
+
+      function resetInterface() {
+        uploadedFilename = null;
+        fileInput.value = "";
+        fileInfo.classList.remove("active");
+        controls.style.display = "none";
+        results.classList.remove("active");
+        uploadZone.style.display = "block";
+        errorMessage.classList.remove("active");
+        if (scoresChart) {
+          scoresChart.destroy();
+          scoresChart = null;
+        }
+      }
+
+      function showError(message) {
+        if (message) {
+          errorMessage.innerHTML = `<strong>❌ Erreur:</strong> ${message}`;
+          errorMessage.classList.add("active");
+        } else {
+          errorMessage.classList.remove("active");
+        }
+      }
+
+      function formatFileSize(bytes) {
+        if (bytes === 0) return "0 Bytes";
+        const k = 1024;
+        const sizes = ["Bytes", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return (bytes / Math.pow(k, i)).toFixed(2) + " " + sizes[i];
+      }
+    </script>
+  </body>
+</html>

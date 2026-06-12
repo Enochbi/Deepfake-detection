@@ -1,0 +1,30 @@
+
+
+## 📁 Structure du Projet
+
+```
+deepfake_detection_app/
+├── app.py                          # Flask API avec multi-face
+├── model_loader.py                 # Détecteur avec OOD corrigé
+├── video_processor.py              # Tracking multi-visages
+├── requirements.txt                # Dépendances Python
+├── templates/
+│   └── index.html                  # Interface web professionnelle
+├── static/
+│   ├── uploads/                    # Vidéos temporaires
+│   ├── faces/                      # Visages extraits
+│   └── js/
+│       └── chart.umd.min.js        # Chart.js (optionnel local)
+├── models/
+│   ├── best_val_auc_20260103_201316.h5         # Modèle frame-level
+│   ├── temporal_classifier.pkl                  # Classifieur temporel
+│   ├── best_threshold.npy                       # Seuil optimal (ignoré, tau_star prioritaire)
+│   ├── ensemble_ood_detector_v2_no_maha.pkl    # Détecteur OOD
+│   ├── centroid_global.npy                      # Centroïde global
+│   ├── centroid_real.npy                        # Centroïde REAL
+│   ├── centroid_fake.npy                        # Centroïde FAKE
+│   ├── deploy.prototxt                          # Face detector config
+│   └── res10_300x300_ssd_iter_140000_fp16.caffemodel
+└── results/                        # Résultats JSON sauvegardés
+
+

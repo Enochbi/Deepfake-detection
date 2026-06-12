@@ -1,0 +1,14 @@
+@"
+# Dossiers lourds
+build/
+__pycache__/
+static/uploads/
+results/
+models/*.h5
+models/*.caffemodel
+models/*.prototxt
+models/*.pkl
+*.pyc
+.venv/
+venv/
+"@ | Out-File -Encoding utf8 .gitignore

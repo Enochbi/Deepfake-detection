@@ -1,0 +1,67 @@
+# Application de détection de deepfakes
+# Python 3.10 recommandé (minimum 3.9)
+
+# -------------------------------
+# Framework Web
+# -------------------------------
+Flask==3.0.0
+Werkzeug==3.0.1
+flask-cors==4.0.0
+python-dotenv==1.0.1
+
+# -------------------------------
+# Deep Learning
+# -------------------------------
+tensorflow==2.19.0
+# keras est inclus dans tensorflow (ne PAS installer séparément)
+
+# -------------------------------
+# Vision par ordinateur
+# -------------------------------
+opencv-python==4.10.0.84
+# ⚠️ opencv-contrib-python inutile sauf si SIFT/SURF/extra modules requis
+
+# -------------------------------
+# Traitement d'images & numérique
+# -------------------------------
+numpy==1.26.4
+Pillow==10.4.0
+
+# -------------------------------
+# Utilitaires
+# -------------------------------
+tqdm==4.66.4
+
+
+
+
+# ==============================================================================
+# DEEPFAKE DETECTION WEB APP - Requirements
+# Python 3.10.19 + TensorFlow 2.19.0
+# Environnement: conda activate tf210
+# ==============================================================================
+
+# Web Framework
+Flask==3.0.0
+Werkzeug==3.0.1
+flask-cors==4.0.0
+python-dotenv==1.0.1
+
+# Deep Learning
+tensorflow==2.19.0
+# keras inclus dans tensorflow
+
+# Vision
+opencv-python==4.10.0.84
+
+# Traitement numérique
+numpy==1.26.4
+Pillow==10.4.0
+
+# Machine Learning classique (pour classifieur temporel)
+scikit-learn==1.3.2
+scipy==1.11.4
+joblib==1.3.2
+
+# Utilitaires
+tqdm==4.66.4
