@@ -3,9 +3,6 @@ markdown
 
 Projet minimal pour mesurer le temps d'inférence réel du modèle **sans DANN** (Fusion adaptative) sur une machine **sans GPU dédié**.  
 Ce projet fournit un script en ligne de commande, simple et suffisant pour répondre aux mesures de performance (temps/frame, pipeline exact, runtime, batch size).
-
-Vous pourrez brancher ces mêmes modules (`src/model_architecture.py`, `src/face_detector.py`, `src/pipeline.py`) dans l'app Flask existante si vous souhaitez également la redéployer telle quelle.
-
 ---
 
 ## 📦 1. Modèles pré-entraînés
