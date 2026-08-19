@@ -1,0 +1,16 @@
+# Creation de l'environnement conda :
+#   conda env create -f environment.yml
+#   conda activate deepfake-cpu-bench
+#
+# Si vous preferez reutiliser le nom d'environnement de l'ancienne app
+# (tf210, mentionne dans vos requirements.txt precedents), changez juste
+# le champ "name:" ci-dessous avant de creer l'environnement.
+name: deepfake-cpu-bench
+
+channels:
+  - defaults
+  - conda-forge
+
+dependencies:
+  - python=3.10
+  - pip

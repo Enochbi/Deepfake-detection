@@ -1,0 +1,1241 @@
+au niveau de la conférence je ne vois pas d'option pour modifier le titre donc je pense que c'est mieux de conversé le titre… mais dans l'article bien expliqué et justifié notre positionnement final:" Hybrid Spatial-Frequency Deepfake Detection with Adaptive Fusion and Domain-Adversarial Learning" -- Le DANN fait partie de nos perspectives futures de recherche et nos pensons que ça pourrait améliorer le modèle...
+
+
+Benchmark / Inférence CPU
+Afin d’évaluer la faisabilité pratique du modèle en dehors d’un environnement GPU, un benchmark d’inférence a été réalisé exclusivement sur CPU, sans conversion vers TensorFlow Lite ou ONNX. Les mesures ont été effectuées avec TensorFlow 2.19.0 sur un processeur Intel64, en considérant le pipeline complet de détection de deepfakes : extraction des visages, prétraitement, inférence frame-level et agrégation temporelle par régression logistique. Dix frames par vidéo ont été analysées et chaque configuration a été répétée cinq fois. Deux modes d’exécution ont été comparés : traitement par lot de 10 frames (batch_size=10) et traitement frame par frame (batch_size=1).
+
+Résultats
+En mode batch, le temps d’inférence du réseau seul varie entre 156,98 et 350,22 ms par frame selon les essais, avec une moyenne de 252,92 ms/frame sur les cinq mesures, soit environ 3,9 FPS. Lorsque l’ensemble du pipeline est considéré, le temps atteint en moyenne 316,36 ms/frame, correspondant à environ 3,34 FPS. Les résultats individuels rapportent notamment 295,19 ms/frame (3,4 FPS), 346,29 ms/frame (2,9 FPS), 320,66 ms/frame (3,1 FPS) et 415,95 ms/frame (2,4 FPS).
+Le passage au traitement frame par frame dégrade nettement le débit. Les deux mesures disponibles donnent respectivement 374,47 et 339,99 ms/frame, soit une moyenne de 357,23 ms/frame et environ 2,8 FPS. Le réseau seul atteint alors environ 300 ms/frame, contre 253 ms/frame en moyenne en mode batch.
+Le coût de la détection des visages représente une composante non négligeable du temps total, avec environ 63 ms/frame en moyenne en mode batch, tandis que le prétraitement reste pratiquement négligeable, autour de 0,5 ms/frame. Le principal goulet d’étranglement est donc clairement le forward pass du réseau de neurones.
+
+Le chargement initial du modèle nécessite entre 5,17 et 7,30 s, pour un modèle contenant 8 815 688 paramètres. Ce coût est ponctuel et doit être distingué du coût d’inférence proprement dit.
+Interprétation scientifique
+Ces résultats montrent que le modèle demeure exécutable sur CPU sans nécessiter d’accélérateur matériel ni de format d’inférence spécialisé. Le débit obtenu, de l’ordre de 3,3 FPS en traitement batch, indique qu'une analyse de vidéos courtes ou une détection quasi temps réel à faible cadence est envisageable sur une machine standard. En revanche, les performances observées ne permettent pas de qualifier le système de véritablement temps réel au sens d’une analyse vidéo à 25–30 FPS.
+L’intérêt principal du traitement batch apparaît clairement dans ces mesures. Le regroupement de dix frames réduit le coût moyen d’inférence par frame par rapport au traitement individuel. Sur les mesures disponibles, le pipeline batch est environ 11 % plus rapide en temps moyen par frame que le mode single-frame (316 contre 357 ms/frame), et son débit atteint environ 3,34 FPS contre 2,8 FPS. Cette observation suggère que l’exploitation parallèle des frames permet de mieux amortir le coût du réseau sur CPU.
+L’analyse du pipeline montre également que l’optimisation du prétraitement apporterait probablement un gain limité : celui-ci ne représente qu’environ 0,5 ms/frame. À l’inverse, le réseau de classification constitue la principale source de latence, suivi par la détection faciale. Ainsi, une optimisation future visant l’inférence embarquée ou le temps réel devrait prioritairement porter sur la réduction du coût du backbone, la quantification, la compilation ou l’utilisation d’un runtime spécialisé plutôt que sur le prétraitement.
+Un autre résultat important concerne la variabilité inter-exécutions. Les premières répétitions sont fortement plus lentes que les suivantes : par exemple, un benchmark batch rapporte 6967,7 ms lors de la première exécution contre environ 1170–1310 ms lors des répétitions suivantes. Cela indique un effet de warm-up lié à l'initialisation du runtime et aux mécanismes de compilation/cache. Les performances à rapporter pour caractériser l’usage opérationnel doivent donc privilégier les mesures à chaud, tout en documentant séparément le temps de chargement initial.
+Analyse des performances
+D’un point de vue global, le système présente donc un compromis cohérent entre complexité du modèle et coût d’inférence. Avec 8,8 millions de paramètres, il reste relativement compact et peut être exécuté entièrement sur CPU, mais son coût de calcul demeure trop élevé pour une exploitation vidéo haute fréquence. Le résultat obtenu doit ainsi être interprété comme une preuve de faisabilité d’une inférence CPU, et non comme une démonstration de temps réel.
+Les mesures indiquent en particulier :
+Modèle seul, batch : environ 253 ms/frame, soit 3,9 FPS en moyenne.
+Pipeline complet, batch : environ 316 ms/frame, soit 3,3 FPS.
+Pipeline complet, single-frame : environ 357 ms/frame, soit 2,8 FPS.
+Détection faciale : environ 63 ms/frame en batch.
+Prétraitement : environ 0,5 ms/frame.
+Chargement initial du modèle : environ 6 s en moyenne.
+Taille du modèle : 8 815 688 paramètres.
+
+Ces résultats soutiennent donc l’hypothèse d’un déploiement CPU pour des scénarios d’analyse différée, à faible cadence ou sur des séquences courtes. Pour atteindre une inférence réellement temps réel, des optimisations spécifiques du modèle et du runtime seraient nécessaires.
+
+Enfin, une limite méthodologique doit être signalée : les journaux montrent des avertissements de compatibilité liés au chargement des objets scikit-learn sauvegardés avec la version 1.6.1 puis utilisés avec la version 1.3.2. Cette différence de version ne constitue pas en soi une mesure de performance, mais elle doit être corrigée avant une campagne expérimentale finale afin d'assurer une meilleure reproductibilité de l'inférence et de l'agrégation temporelle.
+
+Lecture scientifique en une phrase : le résultat est surtout intéressant parce qu’il montre que le système est déployable sur CPU, mais que son principal verrou pour le temps réel est le coût du réseau de neurones, et non le prétraitement ; le batching apporte un gain mesurable, sans toutefois suffire à atteindre les cadences vidéo usuelles.
+
+---------------------------------
+key,value
+timestamp,2026-08-18T12:27:13
+device,"Intel64 Family 6 Model 142 Stepping 9, GenuineIntel"
+os,Windows-10-10.0.26200-SP0
+tensorflow_version,2.19.0
+runtime,TensorFlow CPU (aucune conversion TFLite/ONNX)
+pipeline,frame-level + agregation temporelle (LogisticRegression officiel)
+batch_mode,batch (batch_size=10)
+n_frames_per_video,10
+n_repeats,5
+model_load_time_s,7.296
+ms_per_frame_model_forward_only,230.18
+ms_per_frame_face_detection,64.52
+ms_per_frame_preprocessing,0.49
+ms_per_frame_end_to_end,295.19
+fps_model_forward_only,4.3
+fps_end_to_end,3.4
+total_video_time_mean_s,2.362
+total_video_time_std_s,2.575
+last_verdict,FAKE
+last_p_video,0.9979
+-----------------------------
+--------------------------
+key,value
+timestamp,2026-08-18T12:28:05
+device,"Intel64 Family 6 Model 142 Stepping 9, GenuineIntel"
+os,Windows-10-10.0.26200-SP0
+tensorflow_version,2.19.0
+runtime,TensorFlow CPU (aucune conversion TFLite/ONNX)
+pipeline,frame-level + agregation temporelle (LogisticRegression officiel)
+batch_mode,batch (batch_size=10)
+n_frames_per_video,10
+n_repeats,5
+model_load_time_s,5.464
+ms_per_frame_model_forward_only,275.27
+ms_per_frame_face_detection,70.54
+ms_per_frame_preprocessing,0.49
+ms_per_frame_end_to_end,346.29
+fps_model_forward_only,3.6
+fps_end_to_end,2.9
+total_video_time_mean_s,2.726
+total_video_time_std_s,2.888
+last_verdict,FAKE
+last_p_video,0.9979
+------------------------------
+-------------------------------
+key,value
+timestamp,2026-08-18T12:29:40
+device,"Intel64 Family 6 Model 142 Stepping 9, GenuineIntel"
+os,Windows-10-10.0.26200-SP0
+tensorflow_version,2.19.0
+runtime,TensorFlow CPU (aucune conversion TFLite/ONNX)
+pipeline,frame-level + agregation temporelle (LogisticRegression officiel)
+batch_mode,batch (batch_size=10)
+n_frames_per_video,10
+n_repeats,5
+model_load_time_s,6.076
+ms_per_frame_model_forward_only,251.94
+ms_per_frame_face_detection,68.18
+ms_per_frame_preprocessing,0.55
+ms_per_frame_end_to_end,320.66
+fps_model_forward_only,4.0
+fps_end_to_end,3.1
+total_video_time_mean_s,2.873
+total_video_time_std_s,2.916
+last_verdict,FAKE
+last_p_video,0.9478
+----------------------------
+-------------------------
+key,value
+timestamp,2026-08-18T12:30:44
+device,"Intel64 Family 6 Model 142 Stepping 9, GenuineIntel"
+os,Windows-10-10.0.26200-SP0
+tensorflow_version,2.19.0
+runtime,TensorFlow CPU (aucune conversion TFLite/ONNX)
+pipeline,frame-level + agregation temporelle (LogisticRegression officiel)
+batch_mode,single-frame (batch_size=1)
+n_frames_per_video,10
+n_repeats,5
+model_load_time_s,6.355
+ms_per_frame_model_forward_only,316.39
+ms_per_frame_face_detection,57.58
+ms_per_frame_preprocessing,0.5
+ms_per_frame_end_to_end,374.47
+fps_model_forward_only,3.2
+fps_end_to_end,2.7
+total_video_time_mean_s,3.16
+total_video_time_std_s,2.519
+last_verdict,FAKE
+last_p_video,0.8939
+-------------------------
+-----------------------
+key,value
+timestamp,2026-08-18T12:31:58
+device,"Intel64 Family 6 Model 142 Stepping 9, GenuineIntel"
+os,Windows-10-10.0.26200-SP0
+tensorflow_version,2.19.0
+runtime,TensorFlow CPU (aucune conversion TFLite/ONNX)
+pipeline,frame-level + agregation temporelle (LogisticRegression officiel)
+batch_mode,single-frame (batch_size=1)
+n_frames_per_video,10
+n_repeats,5
+model_load_time_s,5.472
+ms_per_frame_model_forward_only,283.56
+ms_per_frame_face_detection,55.94
+ms_per_frame_preprocessing,0.49
+ms_per_frame_end_to_end,339.99
+fps_model_forward_only,3.5
+fps_end_to_end,2.9
+total_video_time_mean_s,2.86
+total_video_time_std_s,2.355
+last_verdict,FAKE
+last_p_video,0.8939
+--------------------------------
+-------------------------------
+key,value
+timestamp,2026-08-18T12:32:35
+device,"Intel64 Family 6 Model 142 Stepping 9, GenuineIntel"
+os,Windows-10-10.0.26200-SP0
+tensorflow_version,2.19.0
+runtime,TensorFlow CPU (aucune conversion TFLite/ONNX)
+pipeline,frame-level + agregation temporelle (LogisticRegression officiel)
+batch_mode,batch (batch_size=10)
+n_frames_per_video,10
+n_repeats,5
+model_load_time_s,6.148
+ms_per_frame_model_forward_only,350.22
+ms_per_frame_face_detection,65.25
+ms_per_frame_preprocessing,0.48
+ms_per_frame_end_to_end,415.95
+fps_model_forward_only,2.9
+fps_end_to_end,2.4
+total_video_time_mean_s,3.661
+total_video_time_std_s,4.286
+last_verdict,FAKE
+last_p_video,0.9478
+-------------------------
+key,value
+timestamp,2026-08-18T13:18:26
+device,"Intel64 Family 6 Model 142 Stepping 9, GenuineIntel"
+os,Windows-10-10.0.26200-SP0
+tensorflow_version,2.19.0
+runtime,TensorFlow CPU (aucune conversion TFLite/ONNX)
+pipeline,frame-level + agregation temporelle (LogisticRegression officiel)
+batch_mode,batch (batch_size=10)
+n_frames_per_video,10
+n_repeats,5
+model_load_time_s,5.165
+ms_per_frame_model_forward_only,156.98
+ms_per_frame_face_detection,46.28
+ms_per_frame_preprocessing,0.45
+ms_per_frame_end_to_end,203.71
+fps_model_forward_only,6.4
+fps_end_to_end,4.9
+total_video_time_mean_s,2.152
+total_video_time_std_s,2.107
+last_verdict,REAL
+last_p_video,0.0074
+-------------------------------------
+
+(deepfake-cpu-bench) PS C:\Users\Apôtre Enoch\Downloads\deepfake_cpu_benchmark> python -m src.benchmark --video "videos_test/Le dernier discours de macron V2.mp4" --frames 10 --repeats 5
+2026-08-18 12:26:44.907338: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-08-18 12:26:47.767865: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+⏳ Construction de l'architecture + chargement des poids...
+2026-08-18 12:26:52.990789: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: SSE3 SSE4.1 SSE4.2 AVX AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+WARNING:tensorflow:From C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\keras\src\backend\tensorflow\core.py:232: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+✅ Modele charge en 7.30s (8,815,688 parametres)
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator StandardScaler from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator LogisticRegression from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator Pipeline from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+
+▶️  Benchmark: 5 repetitions, 10 frames/video, mode=batch=10
+
+   run 1/5: 6967.7 ms total (7 visages traites)
+   run 2/5: 1310.1 ms total (7 visages traites)
+   run 3/5: 1170.3 ms total (7 visages traites)
+   run 4/5: 1190.0 ms total (7 visages traites)
+   run 5/5: 1172.3 ms total (7 visages traites)
+
+==============================================================================
+REPONSES AUX 4 QUESTIONS (a reporter dans le rapport / mail encadrant)
+==============================================================================
+1) Temps d'inference mesure :
+   - Forward pass modele seul : 230.18 ms/frame (4.3 FPS)
+   - Pipeline complet (detection visage + pretraitement + modele) : 295.19 ms/frame (3.4 FPS)
+2) Pipeline mesure : frame-level + agregation temporelle (LogisticRegression officiel)
+3) Runtime : TensorFlow CPU (aucune conversion TFLite/ONNX) (TensorFlow 2.19.0)
+4) Mode : batch (batch_size=10)
+==============================================================================
+
+💾 Resultats sauvegardes: C:\Users\Apôtre Enoch\Downloads\deepfake_cpu_benchmark\src\..\results\cpu_benchmark_20260818_122713.csv
+(deepfake-cpu-bench) PS C:\Users\Apôtre Enoch\Downloads\deepfake_cpu_benchmark> python -m src.benchmark --video "videos_test/Le dernier discours de macron V2.mp4" --frames 10 --repeats 5
+2026-08-18 12:27:39.884296: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-08-18 12:27:42.010338: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+⏳ Construction de l'architecture + chargement des poids...
+2026-08-18 12:27:46.103924: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: SSE3 SSE4.1 SSE4.2 AVX AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+WARNING:tensorflow:From C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\keras\src\backend\tensorflow\core.py:232: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+✅ Modele charge en 5.46s (8,815,688 parametres)
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator StandardScaler from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator LogisticRegression from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator Pipeline from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+
+▶️  Benchmark: 5 repetitions, 10 frames/video, mode=batch=10
+
+   run 1/5: 7889.2 ms total (7 visages traites)
+   run 2/5: 1592.3 ms total (7 visages traites)
+   run 3/5: 1454.7 ms total (7 visages traites)
+   run 4/5: 1313.8 ms total (7 visages traites)
+   run 5/5: 1378.9 ms total (7 visages traites)
+
+==============================================================================
+REPONSES AUX 4 QUESTIONS (a reporter dans le rapport / mail encadrant)
+==============================================================================
+1) Temps d'inference mesure :
+   - Forward pass modele seul : 275.27 ms/frame (3.6 FPS)
+   - Pipeline complet (detection visage + pretraitement + modele) : 346.29 ms/frame (2.9 FPS)
+2) Pipeline mesure : frame-level + agregation temporelle (LogisticRegression officiel)
+3) Runtime : TensorFlow CPU (aucune conversion TFLite/ONNX) (TensorFlow 2.19.0)
+4) Mode : batch (batch_size=10)
+==============================================================================
+
+💾 Resultats sauvegardes: C:\Users\Apôtre Enoch\Downloads\deepfake_cpu_benchmark\src\..\results\cpu_benchmark_20260818_122805.csv
+(deepfake-cpu-bench) PS C:\Users\Apôtre Enoch\Downloads\deepfake_cpu_benchmark> 
+(deepfake-cpu-bench) PS C:\Users\Apôtre Enoch\Downloads\deepfake_cpu_benchmark> 
+(deepfake-cpu-bench) PS C:\Users\Apôtre Enoch\Downloads\deepfake_cpu_benchmark> python -m src.benchmark --video "videos_test/This AI Video Looks TOO REAL! 😱 (Google Veo 3).mp4" --frames 10 --repeats 5
+2026-08-18 12:29:13.998703: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-08-18 12:29:15.915700: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+⏳ Construction de l'architecture + chargement des poids...
+2026-08-18 12:29:19.958961: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: SSE3 SSE4.1 SSE4.2 AVX AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+WARNING:tensorflow:From C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\keras\src\backend\tensorflow\core.py:232: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+✅ Modele charge en 6.08s (8,815,688 parametres)
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator StandardScaler from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator LogisticRegression from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator Pipeline from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+
+▶️  Benchmark: 5 repetitions, 10 frames/video, mode=batch=10
+
+   run 1/5: 8087.1 ms total (8 visages traites)
+   run 2/5: 1696.9 ms total (8 visages traites)
+   run 3/5: 1536.2 ms total (8 visages traites)
+   run 4/5: 1539.9 ms total (8 visages traites)
+   run 5/5: 1504.8 ms total (8 visages traites)
+
+==============================================================================
+REPONSES AUX 4 QUESTIONS (a reporter dans le rapport / mail encadrant)
+==============================================================================
+1) Temps d'inference mesure :
+   - Forward pass modele seul : 251.94 ms/frame (4.0 FPS)
+   - Pipeline complet (detection visage + pretraitement + modele) : 320.66 ms/frame (3.1 FPS)
+2) Pipeline mesure : frame-level + agregation temporelle (LogisticRegression officiel)
+3) Runtime : TensorFlow CPU (aucune conversion TFLite/ONNX) (TensorFlow 2.19.0)
+4) Mode : batch (batch_size=10)
+==============================================================================
+
+💾 Resultats sauvegardes: C:\Users\Apôtre Enoch\Downloads\deepfake_cpu_benchmark\src\..\results\cpu_benchmark_20260818_122940.csv
+(deepfake-cpu-bench) PS C:\Users\Apôtre Enoch\Downloads\deepfake_cpu_benchmark> python -m src.benchmark --video "videos_test/This is not Morgan Freeman - A Deepfake Singularity.mp4" --frames 10 --repeats 5 --single-frame
+2026-08-18 12:30:13.839967: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-08-18 12:30:16.548712: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+⏳ Construction de l'architecture + chargement des poids...
+2026-08-18 12:30:22.229661: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: SSE3 SSE4.1 SSE4.2 AVX AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+WARNING:tensorflow:From C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\keras\src\backend\tensorflow\core.py:232: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+✅ Modele charge en 6.35s (8,815,688 parametres)
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator StandardScaler from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator LogisticRegression from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator Pipeline from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+
+▶️  Benchmark: 5 repetitions, 10 frames/video, mode=single-frame (batch=1)
+
+   run 1/5: 7664.7 ms total (8 visages traites)
+   run 2/5: 1991.0 ms total (8 visages traites)
+   run 3/5: 1974.8 ms total (8 visages traites)
+   run 4/5: 2103.8 ms total (8 visages traites)
+   run 5/5: 2064.9 ms total (8 visages traites)
+
+==============================================================================
+REPONSES AUX 4 QUESTIONS (a reporter dans le rapport / mail encadrant)
+==============================================================================
+1) Temps d'inference mesure :
+   - Forward pass modele seul : 316.39 ms/frame (3.2 FPS)
+   - Pipeline complet (detection visage + pretraitement + modele) : 374.47 ms/frame (2.7 FPS)
+2) Pipeline mesure : frame-level + agregation temporelle (LogisticRegression officiel)
+3) Runtime : TensorFlow CPU (aucune conversion TFLite/ONNX) (TensorFlow 2.19.0)
+4) Mode : single-frame (batch_size=1)
+==============================================================================
+
+💾 Resultats sauvegardes: C:\Users\Apôtre Enoch\Downloads\deepfake_cpu_benchmark\src\..\results\cpu_benchmark_20260818_123044.csv
+(deepfake-cpu-bench) PS C:\Users\Apôtre Enoch\Downloads\deepfake_cpu_benchmark> python -m src.benchmark --video "videos_test/This is not Morgan Freeman - A Deepfake Singularity.mp4" --frames 10 --repeats 5 --single-frame
+2026-08-18 12:31:32.749511: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-08-18 12:31:34.711105: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+⏳ Construction de l'architecture + chargement des poids...
+2026-08-18 12:31:38.914824: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: SSE3 SSE4.1 SSE4.2 AVX AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+WARNING:tensorflow:From C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\keras\src\backend\tensorflow\core.py:232: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+✅ Modele charge en 5.47s (8,815,688 parametres)
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator StandardScaler from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator LogisticRegression from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator Pipeline from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+
+▶️  Benchmark: 5 repetitions, 10 frames/video, mode=single-frame (batch=1)
+
+   run 1/5: 7072.9 ms total (8 visages traites)
+   run 2/5: 1752.3 ms total (8 visages traites)
+   run 3/5: 1807.1 ms total (8 visages traites)
+   run 4/5: 1830.4 ms total (8 visages traites)
+   run 5/5: 1836.1 ms total (8 visages traites)
+
+==============================================================================
+REPONSES AUX 4 QUESTIONS (a reporter dans le rapport / mail encadrant)
+==============================================================================
+1) Temps d'inference mesure :
+   - Forward pass modele seul : 283.56 ms/frame (3.5 FPS)
+   - Pipeline complet (detection visage + pretraitement + modele) : 339.99 ms/frame (2.9 FPS)
+2) Pipeline mesure : frame-level + agregation temporelle (LogisticRegression officiel)
+3) Runtime : TensorFlow CPU (aucune conversion TFLite/ONNX) (TensorFlow 2.19.0)
+4) Mode : single-frame (batch_size=1)
+==============================================================================
+
+💾 Resultats sauvegardes: C:\Users\Apôtre Enoch\Downloads\deepfake_cpu_benchmark\src\..\results\cpu_benchmark_20260818_123158.csv
+(deepfake-cpu-bench) PS C:\Users\Apôtre Enoch\Downloads\deepfake_cpu_benchmark> python -m src.benchmark --video "videos_test/This AI Video Looks TOO REAL! 😱 (Google Veo 3).mp4" --frames 10 --repeats 5                 me
+2026-08-18 12:32:03.967156: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2026-08-18 12:32:06.403619: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+⏳ Construction de l'architecture + chargement des poids...
+2026-08-18 12:32:10.467309: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: SSE3 SSE4.1 SSE4.2 AVX AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+WARNING:tensorflow:From C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\keras\src\backend\tensorflow\core.py:232: The name tf.placeholder is deprecated. Please use tf.compat.v1.placeholder instead.
+
+✅ Modele charge en 6.15s (8,815,688 parametres)
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator StandardScaler from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator LogisticRegression from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+C:\Users\Apôtre Enoch\.conda\envs\deepfake-cpu-bench\lib\site-packages\sklearn\base.py:348: InconsistentVersionWarning: Trying to unpickle estimator Pipeline from version 1.6.1 when using version 1.3.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
+https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
+  warnings.warn(
+
+▶️  Benchmark: 5 repetitions, 10 frames/video, mode=batch=10
+
+   run 1/5: 11312.6 ms total (8 visages traites)
+   run 2/5: 1776.0 ms total (8 visages traites)
+   run 3/5: 1571.8 ms total (8 visages traites)
+   run 4/5: 2171.6 ms total (8 visages traites)
+   run 5/5: 1471.9 ms total (8 visages traites)
+
+==============================================================================
+REPONSES AUX 4 QUESTIONS (a reporter dans le rapport / mail encadrant)
+==============================================================================
+1) Temps d'inference mesure :
+   - Forward pass modele seul : 350.22 ms/frame (2.9 FPS)
+   - Pipeline complet (detection visage + pretraitement + modele) : 415.95 ms/frame (2.4 FPS)
+2) Pipeline mesure : frame-level + agregation temporelle (LogisticRegression officiel)
+3) Runtime : TensorFlow CPU (aucune conversion TFLite/ONNX) (TensorFlow 2.19.0)
+4) Mode : batch (batch_size=10)
+==============================================================================
+
+💾 Resultats sauvegardes: C:\Users\Apôtre Enoch\Downloads\deepfake_cpu_benchmark\src\..\results\cpu_benchmark_20260818_123235.csv
+(deepfake-cpu-bench) PS C:\Users\Apôtre Enoch\Downloads\deepfake_cpu_benchmark> 
+
+-------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
+# Rapport complet — Analyse de l’entraînement de la fusion adaptative sans DANN et de la généralisation OOD
+
+## 1. Contexte expérimental
+
+L’expérience porte sur un modèle de détection basé sur une architecture à deux branches, combinant une branche spatiale et une branche fréquentielle, avec une fusion adaptative. La configuration analysée ici est la version **Fusion adaptative sans DANN**.
+
+L’objectif principal de l’expérimentation est d’évaluer dans quelle mesure l’allongement de l’entraînement améliore la capacité du modèle à généraliser vers un domaine différent de celui utilisé pendant l’apprentissage.
+
+Trois niveaux d’évaluation sont particulièrement importants :
+
+* **DFDC-val**, représentant le domaine source et servant notamment à la sélection du seuil ;
+* **FF++-test**, représentant l’évaluation intra-domaine / proche du domaine d’apprentissage ;
+* **Celeb-DF-test**, utilisé comme jeu de test **OOD (Out-of-Distribution)**.
+
+L'évaluation est réalisée à deux niveaux :
+
+1. **Frame-level**, où chaque image est classifiée indépendamment ;
+2. **Video-level**, où les prédictions frame-level sont ensuite agrégées par un classifieur temporel afin d'exploiter la cohérence entre les images d'une même séquence vidéo.
+
+Un seuil de décision est ensuite fixé sur **DFDC-val** et appliqué sans recalibration aux autres jeux de données.
+
+---
+
+# 2. Configuration initiale à 12 époques
+
+La configuration initiale du modèle à 12 époques constituait le point de référence avant la prolongation de l'entraînement.
+
+Pour la fusion adaptative sans DANN, les résultats obtenus étaient les suivants :
+
+| Split               | Frame AUC | Frame F1 | Video AUC | Video F1 | Gain AUC vidéo |
+| ------------------- | --------: | -------: | --------: | -------: | -------------: |
+| DFDC-val            |    0.9707 |   0.9121 |    0.9901 |   0.9615 |        +0.0194 |
+| FF++-test           |    0.9906 |   0.9551 |    0.9984 |   0.9868 |        +0.0078 |
+| Celeb-DF-test (OOD) |    0.8741 |   0.7867 |    0.9160 |   0.8897 |        +0.0419 |
+
+Le résultat particulièrement important concerne **Celeb-DF**, avec une AUC frame-level de **0.8741** et surtout une AUC video-level de **0.9160**.
+
+L'agrégation temporelle apporte donc un gain OOD de :
+
+[
+0.9160 - 0.8741 = 0.0419
+]
+
+soit **+4,19 points d'AUC**.
+
+Cette première expérience montrait déjà que l'information temporelle constitue une source de robustesse importante, en particulier hors domaine.
+
+---
+
+# 3. Décision de prolonger l'entraînement à 20 époques
+
+L'entraînement a ensuite été repris à partir de l'epoch 12 afin d'atteindre une cible de 20 époques.
+
+Les éléments techniques de cette reprise sont les suivants :
+
+* modèle rechargé depuis `model_full.keras` ;
+* configuration et splits restaurés ;
+* générateur d'entraînement : **125 917 images** ;
+* validation : **50 920 images** ;
+* batch size : **64** pour l'entraînement ;
+* batch size : **128** pour les évaluations de diagnostic ;
+* augmentation active sur l'entraînement ;
+* class weights :
+
+  * classe 0 : **1.22995**
+  * classe 1 : **0.84249** ;
+* learning rate initial à la reprise : **3 × 10⁻⁵** ;
+* état de l'optimiseur conservé lors du chargement ;
+* entraînement repris de l'epoch 12 jusqu'à l'epoch 20.
+
+Une anomalie technique TensorFlow a également été observée lors de l'exécution :
+
+```text
+layout failed: INVALID_ARGUMENT:
+Size of values 0 does not match size of permutation 4
+```
+
+Cette erreur est apparue dans le contexte de l'optimisation mémoire/layout de TensorFlow autour d'un dropout dans la branche spatiale. Malgré ce message, l'entraînement a continué normalement et les métriques ont été calculées et sauvegardées. Rien dans les résultats fournis ne permet d'attribuer la stagnation OOD à cette erreur.
+
+---
+
+# 4. Évolution des performances pendant les epochs 13 à 20
+
+L'évolution du modèle pendant la reprise montre une progression très nette des performances sur le domaine source et la validation.
+
+## Epoch 13
+
+Les métriques étaient :
+
+* Train AUC : **0.9589**
+* Validation AUC : **0.9734**
+* Validation loss : **0.3073**
+
+Aucune mesure OOD n'a été fournie pour cette epoch.
+
+## Epoch 14
+
+Diagnostic :
+
+* Train AUC : **0.9630**
+* Val AUC : **0.9757**
+* FF++ AUC : **0.9919**
+* Celeb-DF AUC : **0.8639**
+
+L'OOD est alors légèrement inférieur au résultat observé à l'epoch 12.
+
+## Epoch 15
+
+Les performances de validation continuent à progresser :
+
+* Train AUC : **0.9666**
+* Val AUC : **0.9768**
+
+La tendance est favorable sur les données utilisées pour l'optimisation, mais aucune amélioration OOD n'est encore démontrée.
+
+## Epoch 16
+
+Diagnostic :
+
+* Train AUC : **0.9690**
+* Val AUC : **0.9772**
+* FF++ AUC : **0.9920**
+* Celeb-DF AUC : **0.8750**
+
+On observe une amélioration OOD par rapport à l'epoch 14, mais celle-ci reste inférieure à la meilleure valeur qui sera obtenue ensuite.
+
+## Epoch 17
+
+* Train AUC : **0.9717**
+* Val AUC : **0.9791**
+
+La validation atteint un nouveau meilleur niveau.
+
+## Epoch 18
+
+Diagnostic :
+
+* Train AUC : **0.9734**
+* Val AUC : **0.9784**
+* FF++ AUC : **0.9927**
+* Celeb-DF AUC : **0.8889**
+
+Cette epoch est particulièrement importante.
+
+Elle constitue le **meilleur point OOD observé pendant la reprise**, avec :
+
+[
+AUC_{CelebDF}=0.8889
+]
+
+par rapport à :
+
+[
+AUC_{CelebDF}=0.8741
+]
+
+à l'epoch 12.
+
+Le gain temporaire est donc :
+
+[
+0.8889-0.8741=0.0148
+]
+
+soit **+1,48 point d'AUC**.
+
+Cependant, ce gain ne se maintient pas.
+
+## Epoch 19
+
+* Train AUC : **0.9752**
+* Val AUC : **0.9791**
+
+Le scheduler `ReduceLROnPlateau` est déclenché et le learning rate passe de :
+
+[
+3\times10^{-5}
+]
+
+à :
+
+[
+1.5\times10^{-5}
+]
+
+Cette réduction intervient à la fin de l'epoch 19.
+
+## Epoch 20
+
+Diagnostic :
+
+* Train AUC : **0.9779**
+* Val AUC : **0.9802**
+* FF++ AUC : **0.9929**
+* Celeb-DF AUC : **0.8716**
+
+Les meilleures performances source/validation sont atteintes à cette étape, mais l'OOD retombe fortement.
+
+---
+
+# 5. Comparaison globale 12 époques versus 20 époques
+
+La comparaison est particulièrement instructive.
+
+| Critère                     | 12 epochs | 20 epochs |   Variation |
+| --------------------------- | --------: | --------: | ----------: |
+| DFDC frame AUC              |    0.9707 |    0.9804 |     +0.0097 |
+| DFDC video AUC              |    0.9901 |    0.9947 |     +0.0046 |
+| FF++ frame AUC              |    0.9906 |    0.9929 |     +0.0023 |
+| FF++ video AUC              |    0.9984 |    0.9993 |     +0.0009 |
+| Celeb-DF frame AUC          |    0.8741 |    0.8717 | **−0.0024** |
+| Celeb-DF video AUC          |    0.9160 |    0.9134 | **−0.0026** |
+| Moyenne vidéo FF++/Celeb-DF |    0.9572 |    0.9564 | **−0.0008** |
+
+Cette comparaison met en évidence un phénomène important.
+
+L'allongement de l'entraînement améliore systématiquement les performances **in-domain** :
+
+* DFDC progresse ;
+* FF++ progresse ;
+* la validation progresse ;
+* les métriques d'entraînement progressent.
+
+En revanche, cette amélioration ne se transpose pas au domaine OOD.
+
+Au contraire :
+
+[
+CelebDF_{video}: 0.9160 \rightarrow 0.9134
+]
+
+soit une baisse de **0,26 point d'AUC**.
+
+---
+
+# 6. Analyse du découplage entre domaine source et OOD
+
+Le phénomène le plus important de l'expérience est le découplage entre l'optimisation du domaine source et la généralisation externe.
+
+À l'epoch 14 :
+
+[
+Train=0.9630,\quad Val=0.9757,\quad FF++=0.9919
+]
+
+et :
+
+[
+CelebDF=0.8639
+]
+
+À l'epoch 20 :
+
+[
+Train=0.9779,\quad Val=0.9802,\quad FF++=0.9929
+]
+
+mais :
+
+[
+CelebDF=0.8716
+]
+
+Autrement dit, le modèle devient clairement meilleur sur les données similaires à son domaine d'apprentissage, alors que la généralisation OOD reste relativement stable et instable d'une epoch à l'autre.
+
+Cela indique que **l'ajout d'époques n'est plus le principal levier permettant d'améliorer la robustesse inter-domaines**.
+
+Le modèle continue à optimiser une représentation qui fonctionne très bien sur le domaine source, mais cette optimisation supplémentaire ne produit pas une représentation systématiquement plus robuste aux changements de distribution.
+
+---
+
+# 7. Le comportement particulier de l'epoch 18
+
+L'epoch 18 mérite une attention spécifique.
+
+Elle atteint :
+
+[
+CelebDF\ frame = 0.8889
+]
+
+contre :
+
+[
+0.8741
+]
+
+à l'epoch 12.
+
+Cette amélioration pourrait donner l'impression que poursuivre l'entraînement constitue la bonne stratégie.
+
+Cependant, l'epoch suivante ramène l'OOD à **0.8716**.
+
+La trajectoire :
+
+[
+0.8741 \rightarrow 0.8639 \rightarrow 0.8750 \rightarrow 0.8889 \rightarrow 0.8716
+]
+
+montre une **forte variabilité de la généralisation OOD**.
+
+Le comportement n'est donc pas celui d'une progression monotone vers un meilleur niveau de généralisation.
+
+Il est plus cohérent de parler d'une **instabilité du niveau OOD autour d'un plateau**, avec certains checkpoints temporairement meilleurs que d'autres.
+
+---
+
+# 8. Résultats finaux à 20 époques avec agrégation temporelle
+
+L'évaluation complète du système à 20 époques donne :
+
+| Split         | Frame-level AUC | Frame-level F1 | Temporal AUC | Temporal F1 |    Gain AUC |
+| ------------- | --------------: | -------------: | -----------: | ----------: | ----------: |
+| DFDC-val      |          0.9804 |         0.9313 |       0.9947 |      0.9721 |     +0.0143 |
+| FF++-test     |          0.9929 |         0.9664 |       0.9993 |      0.9902 |     +0.0064 |
+| Celeb-DF-test |          0.8717 |         0.7685 |       0.9134 |      0.8762 | **+0.0417** |
+
+Le résultat le plus intéressant reste Celeb-DF.
+
+Sans temporalité :
+
+[
+AUC=0.8717
+]
+
+Avec agrégation temporelle :
+
+[
+AUC=0.9134
+]
+
+soit :
+
+[
+0.9134-0.8717=0.0417
+]
+
+Le gain est donc de **+4,17 points d'AUC**.
+
+La temporalité améliore également fortement le F1 :
+
+[
+0.7685 \rightarrow 0.8762
+]
+
+soit une progression de :
+
+[
++0.1077
+]
+
+Cette différence est beaucoup plus importante que les changements liés au passage de 12 à 20 époques.
+
+---
+
+# 9. Comparaison directe de l'agrégation temporelle à 12 et 20 époques
+
+À 12 époques :
+
+[
+CelebDF\ frame=0.8741
+]
+
+[
+CelebDF\ video=0.9160
+]
+
+Gain :
+
+[
++0.0419
+]
+
+À 20 époques :
+
+[
+CelebDF\ frame=0.8717
+]
+
+[
+CelebDF\ video=0.9134
+]
+
+Gain :
+
+[
++0.0417
+]
+
+Le gain temporel est donc pratiquement inchangé :
+
+[
+4.19 \rightarrow 4.17
+]
+
+Cela est particulièrement important.
+
+La contribution de l'agrégation temporelle semble **plus robuste à la durée d'entraînement** que la performance frame-level elle-même.
+
+Autrement dit, même lorsque l'OOD frame-level fluctue, la temporalité continue de récupérer une part importante de la robustesse perdue au niveau individuel des frames.
+
+---
+
+# 10. Interprétation du rôle des 20 époques
+
+L'expérience à 20 époques permet de distinguer deux choses.
+
+Premièrement, l'entraînement supplémentaire est utile pour l'optimisation intra-domaine.
+
+La preuve est donnée par :
+
+[
+DFDC\ video: 0.9901 \rightarrow 0.9947
+]
+
+et :
+
+[
+FF++\ video: 0.9984 \rightarrow 0.9993
+]
+
+Deuxièmement, cette amélioration intra-domaine ne se traduit pas par une amélioration OOD.
+
+[
+CelebDF\ video: 0.9160 \rightarrow 0.9134
+]
+
+Ainsi, la durée d'entraînement n'est pas un levier suffisant pour améliorer la robustesse inter-domaines.
+
+Cette observation est scientifiquement intéressante car elle montre que **l'augmentation du nombre d'époques ne résout pas le problème de shift de domaine**.
+
+---
+
+# 11. Pourquoi le modèle à 12 époques peut être retenu
+
+Sur la base des résultats disponibles, il est raisonnable de retenir le modèle à 12 époques comme **modèle de référence principal**, à condition que son choix ait été effectué sans utiliser les résultats de Celeb-DF pour sélectionner le checkpoint.
+
+La justification est simple.
+
+Le modèle à 20 époques :
+
+* améliore le domaine source ;
+* améliore légèrement FF++ ;
+* n'améliore pas Celeb-DF ;
+* réduit légèrement l'AUC vidéo moyenne ;
+* augmente le coût de calcul ;
+* ne fournit donc aucun avantage expérimental pratique pour la généralisation OOD.
+
+La comparaison video-level est particulièrement claire :
+
+[
+FF++:\quad 0.9984 \rightarrow 0.9993
+]
+
+Gain négligeable :
+
+[
++0.0009
+]
+
+tandis que :
+
+[
+CelebDF:\quad 0.9160 \rightarrow 0.9134
+]
+
+Baisse :
+
+[
+-0.0026
+]
+
+et :
+
+[
+Moyenne:\quad 0.9572 \rightarrow 0.9564
+]
+
+Baisse :
+
+[
+-0.0008
+]
+
+Dans cette logique, passer de 12 à 20 époques n'apporte pas d'amélioration suffisante pour justifier le coût supplémentaire.
+
+---
+
+# 12. Attention méthodologique concernant la sélection du checkpoint
+
+Un point doit impérativement être respecté dans la rédaction scientifique.
+
+Il ne faut pas choisir l'epoch 12 uniquement parce qu'elle donne le meilleur résultat sur Celeb-DF, puis présenter ensuite ce choix comme une sélection indépendante.
+
+Celeb-DF est le test OOD.
+
+Si la sélection du modèle utilise directement Celeb-DF, le protocole devient biaisé puisque le jeu de test intervient dans la sélection du modèle.
+
+La procédure correcte est :
+
+1. sélectionner le checkpoint à partir du jeu de validation prévu ;
+2. figer le modèle ;
+3. évaluer ensuite sur Celeb-DF ;
+4. utiliser Celeb-DF uniquement pour mesurer la généralisation.
+
+Dans ce cadre, les résultats à 20 époques restent parfaitement utiles : ils constituent une **expérience complémentaire sur l'effet de la durée d'entraînement**.
+
+---
+
+# 13. Ce que l'expérience apporte à l'article
+
+L'expérience à 20 époques enrichit l'article au lieu d'être considérée comme un échec.
+
+Elle montre que :
+
+> l'amélioration des performances sur le domaine source ne garantit pas une meilleure généralisation hors distribution.
+
+Elle apporte donc un argument expérimental à l'hypothèse suivante :
+
+> **La limitation principale du modèle n'est plus nécessairement l'optimisation du domaine source, mais la capacité à apprendre des représentations réellement invariantes aux variations de domaine.**
+
+C'est exactement le type d'observation qui permet de justifier des travaux futurs sur la robustesse OOD plutôt que de simplement proposer « davantage d'entraînement ».
+
+---
+
+# 14. Conséquence pour le DANN
+
+Les observations réalisées avec l'entraînement prolongé permettent également de mieux interpréter la question du DANN.
+
+Si l'ajout d'époques améliore fortement :
+
+[
+Train,\ Val,\ FF++
+]
+
+mais ne permet pas d'améliorer durablement :
+
+[
+CelebDF
+]
+
+alors le problème ne semble pas être uniquement un problème de convergence.
+
+Cela renforce l'intérêt d'étudier une méthode explicitement conçue pour réduire la dépendance à la distribution du domaine source.
+
+Le DANN peut donc rester une piste pertinente, mais son éventuel échec ne devrait pas être interprété simplement comme :
+
+> « le modèle avait besoin de plus d'époques ».
+
+Les résultats obtenus indiquent plutôt que **prolonger l'entraînement de la configuration sans DANN ne suffit pas à résoudre la généralisation OOD**.
+
+---
+
+# 15. Conséquence pour la branche fréquentielle
+
+Dans les expériences précédentes, la branche spatiale apparaissait comme la contribution dominante, tandis que la branche fréquentielle apportait une information complémentaire mais plus faible.
+
+La prolongation de l'entraînement ne remet pas fondamentalement cette conclusion en cause.
+
+Le problème n'est donc pas nécessairement d'augmenter uniquement la capacité ou la durée d'apprentissage de la branche fréquentielle.
+
+Il faudra plutôt chercher à comprendre :
+
+* quelles composantes fréquentielles restent sensibles au changement de domaine ;
+* si les augmentations utilisées couvrent suffisamment les variations de fréquence ;
+* si la fusion adaptative apprend réellement à exploiter la branche fréquentielle selon le contexte ;
+* si la branche fréquentielle introduit des signaux trop spécifiques au domaine d'apprentissage.
+
+---
+
+# 16. Importance des augmentations
+
+Le modèle utilise déjà plusieurs augmentations fortes :
+
+* flip ;
+* color jitter ;
+* resize/padding ;
+* compression JPEG ;
+* bruit gaussien ;
+* blur.
+
+Malgré cela, l'OOD reste relativement stable autour d'un niveau inférieur aux performances intra-domaine.
+
+Cela indique que les augmentations actuelles ne suffisent probablement pas à reproduire toutes les variations responsables du shift entre les jeux de données.
+
+Une future étude pourrait donc tester des augmentations spécifiquement orientées OOD, plutôt que simplement augmenter leur intensité ou leur nombre.
+
+---
+
+# 17. Ce que montrent réellement les résultats
+
+La conclusion principale n'est pas :
+
+> « 20 époques ne servent à rien. »
+
+Cette formulation serait trop forte.
+
+La conclusion correcte est :
+
+> **20 époques améliorent significativement l'apprentissage et les performances intra-domaine, mais cette amélioration ne se traduit pas par un gain durable de généralisation OOD.**
+
+Les résultats montrent également :
+
+> **L'agrégation temporelle constitue une source de robustesse beaucoup plus stable que l'augmentation de la durée d'entraînement.**
+
+Enfin :
+
+> **Le passage de 12 à 20 époques ne modifie pratiquement pas le bénéfice de la temporalité.**
+
+---
+
+# 18. Modèle recommandé comme référence
+
+Sur la base des résultats disponibles, le modèle **12 époques** est le choix le plus rationnel pour la configuration de référence.
+
+Ses résultats vidéo sont :
+
+[
+DFDC=0.9901
+]
+
+[
+FF++=0.9984
+]
+
+[
+CelebDF=0.9160
+]
+
+avec :
+
+[
+Average=0.9572
+]
+
+Le modèle 20 époques produit :
+
+[
+DFDC=0.9947
+]
+
+[
+FF++=0.9993
+]
+
+[
+CelebDF=0.9134
+]
+
+avec :
+
+[
+Average=0.9564
+]
+
+Le modèle 20 époques est donc légèrement meilleur sur les données proches du domaine source, mais légèrement moins bon sur l'indicateur de généralisation externe et sur la moyenne finale.
+
+Pour l'objectif principal de l'étude, qui inclut explicitement la généralisation OOD, **le modèle à 12 époques est donc plus pertinent comme référence**.
+
+---
+
+# 19. Expérience à 20 époques à conserver dans l'étude
+
+L'expérience à 20 époques ne doit toutefois pas être supprimée.
+
+Elle doit être conservée comme expérience complémentaire montrant l'effet de la durée d'entraînement.
+
+Elle permet de documenter :
+
+* la saturation progressive des performances ID ;
+* l'absence de gain OOD durable ;
+* l'instabilité des performances Celeb-DF ;
+* le fait que la généralisation OOD ne suit pas automatiquement l'amélioration du domaine source ;
+* la pertinence de rechercher des mécanismes spécifiquement dédiés à l'invariance inter-domaines.
+
+Cette expérience renforce donc la discussion scientifique.
+
+---
+
+# 20. Limites de l'expérience
+
+Plusieurs limites doivent cependant être reconnues.
+
+Premièrement, seules les époques 12 à 20 ont été comparées dans cette prolongation.
+
+Deuxièmement, la meilleure AUC OOD intermédiaire est observée à l'epoch 18, mais cette observation doit être interprétée avec prudence puisque Celeb-DF reste un jeu de test.
+
+Troisièmement, la réduction du learning rate intervient seulement à la fin de l'epoch 19. La phase d'entraînement à learning rate réduit est donc très courte. On ne peut pas conclure qu'une stratégie complète de fine-tuning à faible learning rate serait inefficace.
+
+Quatrièmement, les résultats restent dépendants de l'architecture, des augmentations et de la fonction de fusion utilisées.
+
+---
+
+# 21. Perspectives d'amélioration
+
+Les résultats orientent naturellement les prochaines expérimentations vers des mécanismes capables d'améliorer la robustesse OOD sans simplement augmenter la durée d'apprentissage.
+
+Les pistes prioritaires sont :
+
+### 21.1. Réexaminer le DANN
+
+Tester si un DANN correctement pondéré et stabilisé peut réduire les différences de représentation entre domaines.
+
+Il faudra notamment étudier :
+
+* le poids de la perte adversariale ;
+* le calendrier d'activation du DANN ;
+* la possibilité d'un warm-up ;
+* l'emplacement exact du discriminateur ;
+* la stabilité de l'apprentissage adversarial.
+
+### 21.2. Améliorer la branche fréquentielle
+
+La branche fréquentielle étant plus faible que la branche spatiale, plusieurs variantes peuvent être étudiées :
+
+* meilleure représentation fréquentielle ;
+* fusion multi-échelle ;
+* filtrage ou pondération adaptative des bandes ;
+* apprentissage plus robuste aux transformations de compression ;
+* régularisation spécifique de la branche fréquentielle.
+
+### 21.3. Tester des augmentations réellement orientées OOD
+
+Les augmentations classiques peuvent être complétées par des transformations visant explicitement les variations inter-datasets :
+
+* compression plus variée ;
+* changements de résolution ;
+* bruit et artefacts de caméra ;
+* transformations de couleur ;
+* dégradations liées aux codecs ;
+* perturbations spécifiques aux fréquences.
+
+### 21.4. Étudier un entraînement à learning rate réduit
+
+Une stratégie possible serait :
+
+* entraînement initial ;
+* plateau ;
+* réduction du learning rate ;
+* phase de fine-tuning ;
+* arrêt basé sur une métrique de validation robuste.
+
+Cette expérience serait différente d'un simple passage de 20 à 30 ou 40 époques.
+
+### 21.5. Exploiter davantage la temporalité
+
+Les résultats montrent déjà que l'information temporelle apporte environ **+4,2 points d'AUC sur Celeb-DF**.
+
+Il existe donc probablement un potentiel supplémentaire dans :
+
+* l'amélioration du classifieur temporel ;
+* des fenêtres temporelles mieux adaptées ;
+* des mécanismes d'attention temporelle ;
+* une agrégation plus robuste aux frames aberrantes.
+
+---
+
+# 22. Conclusion générale
+
+L'expérience de prolongation jusqu'à 20 époques fournit un résultat expérimental clair.
+
+Le modèle continue à progresser sur le domaine source et le domaine proche :
+
+[
+DFDC,\ FF++,\ Validation \uparrow
+]
+
+mais cette progression ne s'accompagne pas d'une amélioration de la généralisation OOD :
+
+[
+CelebDF\ frame:\ 0.8741 \rightarrow 0.8717
+]
+
+[
+CelebDF\ video:\ 0.9160 \rightarrow 0.9134
+]
+
+La meilleure valeur frame-level temporairement observée à l'epoch 18, **0.8889**, n'est pas maintenue à l'epoch 20.
+
+Le résultat le plus robuste de l'étude reste donc l'apport de l'agrégation temporelle :
+
+[
+CelebDF\ frame=0.8717
+]
+
+[
+CelebDF\ video=0.9134
+]
+
+[
+Gain=+0.0417
+]
+
+Cette contribution est stable entre les deux configurations d'entraînement et constitue un argument fort en faveur de l'exploitation de la dynamique temporelle.
+
+En conséquence, le modèle à **12 époques** peut être conservé comme modèle de référence, sous réserve que ce choix ait été effectué selon un critère de validation indépendant du test OOD. L'expérience à 20 époques doit être conservée comme une analyse de sensibilité démontrant que **l'augmentation de la durée d'entraînement améliore les performances intra-domaine mais ne constitue pas, à elle seule, une stratégie efficace pour améliorer la généralisation inter-domaines**.
+
+Cette observation justifie directement les travaux futurs portant sur l'invariance aux domaines, l'amélioration de la branche fréquentielle, les stratégies d'adaptation de domaine et l'exploitation plus poussée de l'information temporelle.
+
+## Résultat final à reporter dans le tableau d'ablation
+
+**Fusion adaptative + Temporal aggregation | FF++-test = 0.9984 | Celeb-DF-test = 0.9160 | Avg = 0.9572**
+
+Configuration recommandée comme référence : **modèle à 12 époques**.
+
+Expérience complémentaire : **20 époques**, conservée pour démontrer l'absence de gain OOD durable malgré l'amélioration des performances intra-domaine.

@@ -1,14 +1,14 @@
-@"
-# Dossiers lourds
-build/
-__pycache__/
-static/uploads/
-results/
-models/*.h5
-models/*.caffemodel
-models/*.prototxt
+*.pkl
+*.npy
+*.joblib
+*.h5
+*.pt
+*.onnx
 models/*.pkl
+models/*.npy
+videos_test/
+data/
+logs/
+__pycache__/
 *.pyc
-.venv/
-venv/
-"@ | Out-File -Encoding utf8 .gitignore
+.env

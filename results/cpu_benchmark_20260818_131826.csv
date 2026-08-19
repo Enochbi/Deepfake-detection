@@ -1,0 +1,21 @@
+key,value
+timestamp,2026-08-18T13:18:26
+device,"Intel64 Family 6 Model 142 Stepping 9, GenuineIntel"
+os,Windows-10-10.0.26200-SP0
+tensorflow_version,2.19.0
+runtime,TensorFlow CPU (aucune conversion TFLite/ONNX)
+pipeline,frame-level + agregation temporelle (LogisticRegression officiel)
+batch_mode,batch (batch_size=10)
+n_frames_per_video,10
+n_repeats,5
+model_load_time_s,5.165
+ms_per_frame_model_forward_only,156.98
+ms_per_frame_face_detection,46.28
+ms_per_frame_preprocessing,0.45
+ms_per_frame_end_to_end,203.71
+fps_model_forward_only,6.4
+fps_end_to_end,4.9
+total_video_time_mean_s,2.152
+total_video_time_std_s,2.107
+last_verdict,REAL
+last_p_video,0.0074
